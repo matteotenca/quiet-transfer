@@ -5,3 +5,4 @@
 /**/pyquietlib.egg-info/
 **/*.pyd
 /venv/
+/_dist/

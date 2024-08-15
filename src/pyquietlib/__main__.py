@@ -1,21 +1,9 @@
 import argparse
-import sys
 
-try:
-    if sys.platform == 'win32':
-        from pyquietlib._send_data_win32 import _send_file
-        from pyquietlib._receive_data_win32 import _receive_file
-    else:
-        from pyquietlib._send_data_posix import _send_file
-        from pyquietlib._receive_data_posix import _receive_file
-except ImportError as im:
-    print(f'Error importing from pyquielib binary: '
-          f'path {im.path}, name {im.name}, imported from {im.name_from}',
-          file=sys.stderr, flush=True)
-    sys.exit(1)
+from pyquietlib.Receive import ReceiveFile
+from pyquietlib.Send import SendFile
 
-
-def _main():
+def _main() -> int:
     parser = argparse.ArgumentParser(prog="quiet-transfer",
                                      description="Command line utility to send/receive "
                                                  "files/strings via quiet library.")
@@ -67,9 +55,11 @@ def _main():
     args: argparse.Namespace = parser.parse_args()
 
     if args.command == "send":
-        _send_file(args)
+        send_obj = SendFile(args=args)
+        return send_obj.send_file()
     elif args.command == "receive":
-        _receive_file(args)
+        receive_obj = ReceiveFile(args=args)
+        return receive_obj.receive_file()
 
 
 if __name__ == '__main__':
