@@ -6,8 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "pyquietlib"
 dynamic = ["version"]
 authors = [{name = "Matteo Tenca", email = "matteo.tenca@gmail.com"}]
-license = {text = "GPL3"}
+license = {file = "LICENSE.md"}
 dependencies = ["cffi>=1.12.0", "pyaudio", "soundfile"]
+
+[project.urls]
+homepage = "https://github.com/matteotenca/pyquietlib"
 
 [tool.setuptools]
 include-package-data = false
