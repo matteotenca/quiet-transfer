@@ -2,7 +2,7 @@
 /build/
 /dist/
 /pybuild.iml
-/**/pyquietlib.egg-info/
+/**/transfer_quiet.egg-info/
 **/*.pyd
 /venv/
 /_dist/

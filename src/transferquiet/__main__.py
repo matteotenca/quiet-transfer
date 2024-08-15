@@ -1,5 +1,5 @@
 """
-        Pyquietlib - a tool to transfer files encoded in audio
+        Transfer-quiet - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -17,11 +17,12 @@
 """
 import argparse
 
-from pyquietlib.Receive import ReceiveFile
-from pyquietlib.Send import SendFile
+from transferquiet.Receive import ReceiveFile
+from transferquiet.Send import SendFile
+
 
 def _main() -> int:
-    parser = argparse.ArgumentParser(prog="quiet-transfer",
+    parser = argparse.ArgumentParser(prog="transfer-quiet",
                                      description="Command line utility to send/receive "
                                                  "files/strings via quiet library.")
     subparsers = parser.add_subparsers(required=True, title="commands",
@@ -39,7 +40,7 @@ def _main() -> int:
         metavar="<wavoutputfile>", default=None)
     sender.add_argument(
         "-p", "--protocol", help="protocol", metavar="<protocol>",
-        default="audible",)
+        default="audible")
     sender.add_argument(
         "-f", "--file-transfer", help="enable file transfer mode.",
         action="store_true", default=False)

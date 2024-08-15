@@ -1,5 +1,5 @@
 """
-        Pyquietlib - a tool to transfer files encoded in audio
+        Transfer-quiet - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ if sys.platform == 'win32':
     ffi_include = Path().absolute().joinpath("include_win32").joinpath("quiet_portaudio_all_cleaned_cffi.h").as_posix()
     with open(ffi_include) as h_file:
         ffibuilder.cdef(h_file.read())
-        ffibuilder.set_source("pyquietlib._pyquietlibwin32",  # name of the output C extension
+        ffibuilder.set_source("transferquiet._transferquietwin32",  # name of the output C extension
                               """
                                     #include "portaudio.h"
                                     #include "quiet_portaudio_all_cleaned.h"
@@ -38,7 +38,7 @@ else:
     ffi_include = Path().absolute().joinpath("include_posix").joinpath("quiet_cffi.h").as_posix()
     with open(ffi_include) as h_file:
         ffibuilder.cdef(h_file.read())
-        ffibuilder.set_source("pyquietlib._pyquietlibposix",  # name of the output C extension
+        ffibuilder.set_source("transferquiet._transferquietposix",  # name of the output C extension
                               """
                                     #include "portaudio.h"
                                     #include "quiet.h"

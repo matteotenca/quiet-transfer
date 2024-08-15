@@ -1,5 +1,5 @@
 """
-        Pyquietlib - a tool to transfer files encoded in audio
+        Transfer-quiet - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -22,11 +22,11 @@ from setuptools import setup
 
 pdata = {
     "": ["*.json"],
-    "pyquietlib.dll_win32": ["*.dll"]
+    "transferquiet.dll_win32": ["*.dll"]
     } if sys.platform == "win32" else {"": ["*.json"]}
 
 setup(
-    name="pyquietlib",
+    name="transfer-quiet",
     cffi_modules=["compile_cffi.py:ffibuilder"],
     package_dir={"": "src"},
     package_data=pdata,
