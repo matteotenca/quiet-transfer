@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=60", "cffi>=1.12.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyquietlib"
+dynamic = ["version"]
+authors = [{name = "Matteo Tenca", email = "matteo.tenca@gmail.com"}]
+license = {text = "GPL3"}
+dependencies = ["cffi>=1.12.0", "pyaudio", "soundfile"]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = {attr = "pyquietlib.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+transfer-file = "pyquietlib.__main__:_main"

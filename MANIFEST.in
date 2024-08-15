@@ -1,0 +1,4 @@
+include compile_cffi.py
+recursive-include include_posix *
+recursive-include include_win32 *
+recursive-include lib_win32 *

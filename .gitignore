@@ -1,0 +1,7 @@
+/.idea/
+/build/
+/dist/
+/pybuild.iml
+/**/pyquietlib.egg-info/
+**/*.pyd
+/venv/
