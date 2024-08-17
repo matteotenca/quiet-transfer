@@ -1,5 +1,5 @@
 """
-        Transfer-quiet - a tool to transfer files encoded in audio
+        Quiet-Transfer - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -17,12 +17,12 @@
 """
 import argparse
 
-from transferquiet.Receive import ReceiveFile
-from transferquiet.Send import SendFile
+from quiettransfer.Receive import ReceiveFile
+from quiettransfer.Send import SendFile
 
 
 def _main() -> int:
-    parser = argparse.ArgumentParser(prog="transfer-quiet",
+    parser = argparse.ArgumentParser(prog="quiet-transfer",
                                      description="Command line utility to send/receive "
                                                  "files/strings via quiet library.")
     subparsers = parser.add_subparsers(required=True, title="commands",

@@ -1,5 +1,5 @@
 """
-        Transfer-quiet - a tool to transfer files encoded in audio
+        Quiet-Transfer - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ import pyaudio
 # noinspection PyPackageRequirements
 import soundfile as sf
 
-import transferquiet
+import quiettransfer
 
 
 class ReceiveFile:
@@ -38,9 +38,9 @@ class ReceiveFile:
                  protocol: str = "audible", input_wav: Optional[str] = None,
                  file_transfer: bool = False) -> None:
 
-        self._lib = transferquiet.lib
-        self._ffi = transferquiet.ffi
-        self._profile_file = transferquiet.profile_file
+        self._lib = quiettransfer.lib
+        self._ffi = quiettransfer.ffi
+        self._profile_file = quiettransfer.profile_file
 
         self._win32 = True if sys.platform == "win32" else False
         self._script = True if args is not None else False

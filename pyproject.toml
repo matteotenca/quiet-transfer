@@ -3,23 +3,34 @@ requires = ["setuptools>=60", "cffi>=1.12.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "transfer-quiet"
+name = "quiet-transfer"
 dynamic = ["version"]
 authors = [{name = "Matteo Tenca", email = "matteo.tenca@gmail.com"}]
 license = {file = "LICENSE.md"}
 dependencies = ["cffi>=1.12.0", "pyaudio", "soundfile"]
 
 [project.urls]
-homepage = "https://github.com/matteotenca/pyquietlib"
+homepage = "https://github.com/matteotenca/quiet-transfer"
 
 [tool.setuptools]
 include-package-data = false
 
 [tool.setuptools.dynamic]
-version = {attr = "transferquiet.__version__"}
+version = {attr = "quiettransfer.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [project.scripts]
-transfer-quiet = "transferquiet.__main__:_main"
+quiet-transfer = "quiettransfer.__main__:_main"
+
+[tool.cibuildwheel.windows]
+skip = "cp36-*"
+archs = "auto64"
+
+[tool.cibuildwheel.linux]
+skip = "cp36-* *musl*"
+archs = "auto64"
+container-engine = "podman"
+before-all = "yum -y install git portaudio-devel jansson-devel libsndfile-devel && git clone https://github.com/quiet/libfec && cd libfec && ./configure --prefix=/usr && make && make install && strip -s /usr/lib/libfec.so && strip -s /usr/lib/libfec.a && cd .. && git clone https://github.com/quiet/quiet-dsp && cd quiet-dsp && git checkout devel &&  mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make -j4 && make install && strip -s /usr/lib/libliquid.so && strip -s /usr/lib/libliquid.a && cd .. && cd .. && git clone https://github.com/quiet/quiet && cd quiet && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make && make install && strip -s /usr/lib/libquiet.so && strip -s /usr/lib/libquiet.a"
+

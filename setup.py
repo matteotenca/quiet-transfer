@@ -1,5 +1,5 @@
 """
-        Transfer-quiet - a tool to transfer files encoded in audio
+        Quiet-Transfer - a tool to transfer files encoded in audio
         Copyright (C) 2024 Matteo Tenca
 
         This program is free software: you can redistribute it and/or modify
@@ -22,11 +22,11 @@ from setuptools import setup
 
 pdata = {
     "": ["*.json"],
-    "transferquiet.dll_win32": ["*.dll"]
+    "quiettransfer.dll_win32": ["*.dll"]
     } if sys.platform == "win32" else {"": ["*.json"]}
 
 setup(
-    name="transfer-quiet",
+    name="quiet-transfer",
     cffi_modules=["compile_cffi.py:ffibuilder"],
     package_dir={"": "src"},
     package_data=pdata,

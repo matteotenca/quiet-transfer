@@ -2,7 +2,8 @@
 /build/
 /dist/
 /pybuild.iml
-/**/transfer_quiet.egg-info/
+/**/**egg-info/
 **/*.pyd
 /venv/
 /_dist/
+/wheelhouse/
