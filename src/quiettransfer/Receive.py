@@ -20,13 +20,14 @@ import binascii
 import json
 import sys
 import time
+from io import FileIO
 from pathlib import Path
-from typing import Optional, Any, BinaryIO
+from typing import Optional, Any
 
 # noinspection PyPackageRequirements
 import pyaudio
 # noinspection PyPackageRequirements
-import soundfile as sf
+import soundfile as sf # type: ignore
 
 import quiettransfer
 
@@ -47,7 +48,7 @@ class ReceiveFile:
 
         if args is not None:
             # called from command line
-            self._output = args.output
+            self._output_file_name = args.output
             self._overwrite = args.overwrite
             self._protocol = args.protocol
             self._input_wav = args.input_wav
@@ -55,13 +56,21 @@ class ReceiveFile:
             self._dump = args.dump
         else:
             # called from module
-            self._output = output
+            self._output_file_name = output
             self._overwrite = overwrite
             self._protocol = protocol
             self._input_wav = input_wav
             self._file_transfer = file_transfer
             self._dump = dump
 
+
+        self._output = sys.stdout.buffer
+        self._output_file_fw: Optional[FileIO] = None
+        self._input_wav_fw = None
+        self._dump_wav_fw = None
+        self._p: Optional[pyaudio.PyAudio] = None
+        self._stream: Optional[pyaudio.Stream] = None
+        self._d = None
         self._samplerate = 44100
 
     def receive_file(self) -> int:
@@ -79,56 +88,49 @@ class ReceiveFile:
 
     def _receive_file_win32(self) -> int:
 
-        d = None
         done = False
-        output: BinaryIO = sys.stdout.buffer
-        output_fw: Optional[BinaryIO] = None
-        # buf: Optional[io.BytesIO] = None
         total = 0
         first = True
         size = -1
-        t = 0
+        t = float(0)
         crc32: str = ""
-        sample_rate = 44100
-        p: Optional[pyaudio.PyAudio] = None
-        stream = None
-        dump_wav: Optional[sf.SoundFile] = None
-        input_wav: Optional[sf.SoundFile] = None
 
         try:
-            if self._output and self._output != "-":
-                if (Path(self._output).is_file() and self._overwrite) or not Path(self._output).exists() and not Path(self._output).is_dir():
-                    output_fw = open(self._output, "b+w", buffering=0)
-                    output = output_fw
-                elif Path(self._output).exists():
-                    raise IOError(f"Output file {self._output} exists!")
+            if self._output_file_name and self._output_file_name != "-":
+                if (Path(self._output_file_name).is_file() and self._overwrite) or (not Path(self._output_file_name).exists()) and (not Path(self._output_file_name).is_dir()):
+                    self._output_file_fw = open(self._output_file_name, "b+w", buffering=0)
+                    self._output = self._output_file_fw
+                elif Path(self._output_file_name).exists():
+                    raise IOError(f"Output file {self._output_file_name} exists!")
             if self._dump:
-                dump_wav = sf.SoundFile(self._dump, "wb", samplerate=sample_rate, channels=1, format='WAV', subtype="FLOAT")
+                self._dump_wav_fw = sf.SoundFile(self._dump, "wb", samplerate=self._samplerate, channels=1, format='WAV', subtype="FLOAT")
             if self._input_wav:
                 if Path(self._input_wav).is_file():
-                    input_wav = sf.SoundFile(self._input_wav, "rb")
+                    self._input_wav_fw = sf.SoundFile(self._input_wav, "rb")
                 else:
                     raise IOError(f"Input wav file {self._input_wav} not found.")
             else:
-                p = pyaudio.PyAudio()
-                stream = p.open(format=pyaudio.paFloat32, channels=1, rate=sample_rate, input=True,
-                                frames_per_buffer=4096)
+                self._p = pyaudio.PyAudio()
+                self._stream = self._p.open(format=pyaudio.paFloat32, channels=1, rate=self._samplerate, input=True,
+                                            frames_per_buffer=4096)
             write_buffer_size = 16 * 1024
             write_buffer = self._ffi.new(f"uint8_t[{write_buffer_size}]")
             opt = self._lib.quiet_decoder_profile_filename(self._profile_file.encode(), self._protocol.encode())
-            d = self._lib.quiet_decoder_create(opt, sample_rate)
+            self._d = self._lib.quiet_decoder_create(opt, self._samplerate)
             while not done:
-                if input_wav is not None:
-                    sound_data = input_wav.buffer_read(16 * 1024, 'float32')
+                if self._input_wav_fw is not None:
+                    sound_data = self._input_wav_fw.buffer_read(16 * 1024, 'float32')
+                elif self._stream is not None:
+                    sound_data = self._stream.read(16 * 1024)
                 else:
-                    sound_data = stream.read(16 * 1024)
-                if dump_wav is not None:
-                    dump_wav.buffer_write(sound_data, 'float32')
-                    dump_wav.flush()
+                    raise ValueError(f"\nERROR: Can't read sound data!")
+                if self._dump_wav_fw is not None:
+                    self._dump_wav_fw.buffer_write(sound_data, 'float32')
+                    self._dump_wav_fw.flush()
                 read_size = int(len(sound_data) / self._ffi.sizeof("quiet_sample_t"))
                 sound_data_ctype = self._ffi.from_buffer("quiet_sample_t *", sound_data)
-                self._lib.quiet_decoder_consume(d, sound_data_ctype, read_size)
-                decoded_size = self._lib.quiet_decoder_recv(d, write_buffer, write_buffer_size)
+                self._lib.quiet_decoder_consume(self._d, sound_data_ctype, read_size)
+                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, write_buffer_size)
                 if decoded_size < 0:
                     continue
                 elif decoded_size == 0:
@@ -136,7 +138,7 @@ class ReceiveFile:
                     self._print_msg(f"\nDecoded size is zero.")
                     done = True
                 else:
-                    if self._lib.quiet_decoder_checksum_fails(d):
+                    if self._lib.quiet_decoder_checksum_fails(self._d):
                         raise ValueError(f"\nERROR: Checksum failed at block {total}")
                     if first and self._file_transfer:
                         first = False
@@ -147,36 +149,29 @@ class ReceiveFile:
                         self._print_msg(f"Size: {size}")
                         self._print_msg(f"CRC32: {crc32}")
                         t = time.time()
-                        # buf = io.BytesIO()
                     else:
-                        output.write(self._ffi.buffer(write_buffer)[0:decoded_size])
-                        output.flush()
+                        self._output.write(self._ffi.buffer(write_buffer)[0:decoded_size])
+                        self._output.flush()
                         if self._file_transfer:
                             total += decoded_size
                             self._print_msg(f"Received: {total}  \r", end="")
-                            # buf.write(self._ffi.buffer(write_buffer)[0:decoded_size])
-                            # buf.flush()
                             if total == size:
                                 done = True
                             elif total > size:
                                 raise ValueError("ERROR: too big.")
-            self._lib.quiet_decoder_flush(d)
+            self._lib.quiet_decoder_flush(self._d)
             while True:
-                decoded_size = self._lib.quiet_decoder_recv(d, write_buffer, write_buffer_size)
-                if self._lib.quiet_decoder_checksum_fails(d):
+                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, write_buffer_size)
+                if self._lib.quiet_decoder_checksum_fails(self._d):
                     raise ValueError(f"\nERROR: Flushing, checksum failed at block {total}")
                 if decoded_size < 0:
                     break
-                output.write(self._ffi.buffer(write_buffer)[0:decoded_size])
-                output.flush()
-                # if buf is not None:
-                #     buf.write(self._ffi.buffer(write_buffer)[0:decoded_size])
-                #     buf.flush()
-            if self._file_transfer and output_fw is not None:
+                self._output.write(self._ffi.buffer(write_buffer)[0:decoded_size])
+                self._output.flush()
+            if self._file_transfer and self._output_file_fw is not None:
                 tt = time.time() - t
-                output.seek(0)
-                # crc32r: int = binascii.crc32(buf.getbuffer())
-                crc32r: int = binascii.crc32(output.read())
+                self._output.seek(0)
+                crc32r: int = binascii.crc32(self._output.read())
                 fixed_length_hex: str = f'{crc32r:08x}'
                 self._print_msg("")
                 if crc32 != fixed_length_hex:
@@ -187,35 +182,35 @@ class ReceiveFile:
                 self._print_msg(f"Time taken to decode waveform: {tt}")
                 self._print_msg(f"Speed: {size / tt} B/s")
         except KeyboardInterrupt as ex:
-            self._print_msg(str(ex))
             if self._script:
+                self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except ValueError as ex:
-            self._print_msg(str(ex))
             if self._script:
+                self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except IOError as ex:
-            self._print_msg(str(ex))
             if self._script:
+                self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except Exception as ex:
             raise ex
         finally:
-            if output_fw is not None:
-                output_fw.close()
-            if dump_wav is not None:
-                dump_wav.close()
-            if d is not None:
-                self._lib.quiet_decoder_destroy(d)
-            if stream is not None:
-                stream.stop_stream()
-                stream.close()
-            if p is not None:
-                p.terminate()
+            if self._output_file_fw is not None:
+                self._output_file_fw.close()
+            if self._dump_wav_fw is not None:
+                self._dump_wav_fw.close()
+            if self._d is not None:
+                self._lib.quiet_decoder_destroy(self._d)
+            if self._stream is not None:
+                self._stream.stop_stream()
+                self._stream.close()
+            if self._p is not None:
+                self._p.terminate()
         return 0

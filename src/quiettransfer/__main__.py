@@ -17,6 +17,7 @@
 """
 import argparse
 
+import quiettransfer
 from quiettransfer.Receive import ReceiveFile
 from quiettransfer.Send import SendFile
 
@@ -39,7 +40,7 @@ def _main() -> int:
         "-o", "--output-wav", help="write audio to this wav file.",
         metavar="<wavoutputfile>", default=None)
     sender.add_argument(
-        "-p", "--protocol", help="protocol", metavar="<protocol>",
+        "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
         default="audible")
     sender.add_argument(
         "-f", "--file-transfer", help="enable file transfer mode.",
@@ -60,7 +61,7 @@ def _main() -> int:
         "-d", "--dump", help="dump received audio to this wav file.",
         metavar="<dumpfile>", default=None)
     receiver.add_argument(
-        "-p", "--protocol", help="protocol", metavar="<protocol>",
+        "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
         default="audible",)
     receiver.add_argument(
         "-i", "--input-wav", help="WAV file to read from.",
@@ -78,6 +79,8 @@ def _main() -> int:
     elif args.command == "receive":
         receive_obj = ReceiveFile(args=args)
         return receive_obj.receive_file()
+    else:
+        return 1
 
 
 if __name__ == '__main__':
