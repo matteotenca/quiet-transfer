@@ -24,12 +24,14 @@ to a sound card or to a WAV file, and all the way back.
 
 ### Usage
 ```bash
-usage: quiet-transfer [-h] {send,receive} ...
+$> quiet-transfer -h
+usage: quiet-transfer [-h] [-V] {send,receive} ...
 
 Command line utility to send/receive files/strings via quiet library.
 
 options:
   -h, --help      show this help message and exit
+  -V, --version   print version number.
 
 commands:
   {send,receive}  send or receive data.
@@ -40,6 +42,7 @@ commands:
 ### Send
 
 ```bash
+$> quiet-transfer send -h
 usage: quiet-transfer send [-h] [-i <inputfile>] [-o <wavoutputfile>] [-p <protocol>] [-f]
 
 Command line utility to send/receive files/strings via quiet library.
@@ -75,6 +78,7 @@ written to the current default output audio device
  ### Receive
 
 ```bash
+$> quiet-transfer receive -h
 usage: quiet-transfer receive [-h] [-o <outputfile>] [-w] [-d <dumpfile>] [-p <protocol>] [-i <wavinputfile>] [-f]
 
 Command line utility to send/receive files/strings via quiet library.
@@ -103,9 +107,9 @@ options:
    - ultrasonic-3600
    - ultrasonic-whisper
 - `<dumpfile>` is the optional name of a WAV file. All the audio data read from the soundcard 
-or from a input WAV file is written to this file.
-- `<wavinputfile>` is the optional name of a WAV file to analyze. Usually this file is generated using the `--output-wav` option.
-- `--file-transfer` enables parsing the JSON header generated while sending, used to compare the remote file's size and CRC32 with the received file's ones.
+or from a input WAV file is written to this file too.
+- `<wavinputfile>` is the optional name of a WAV file to analyze. Usually this file is generated using the `send --output-wav` option.
+- `--file-transfer` enables parsing of the JSON header generated while sending a file in file transfer mode. It is used to compare the remote file's size and CRC32 with the received file's ones.
 
 ### See also
 

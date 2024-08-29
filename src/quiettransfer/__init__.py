@@ -32,5 +32,5 @@ profile_file = os.path.join(os.path.dirname(__file__), "quiet-profiles.json")
 profile = json.load(open(profile_file))
 protocols = profile.keys()
 
-__version__ = "0.2.5"
-__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile"]
+__version__ = "0.2.6"
+__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__"]

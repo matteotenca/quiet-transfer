@@ -26,6 +26,11 @@ def _main() -> int:
     parser = argparse.ArgumentParser(prog="quiet-transfer",
                                      description="Command line utility to send/receive "
                                                  "files/strings via quiet library.")
+    parser.add_argument(
+        "-V", "--version",
+        help="print version number.",
+        action="version", version=f"%(prog)s {quiettransfer.__version__}")
+
     subparsers = parser.add_subparsers(required=True, title="commands",
                                        help="send or receive data.")
 

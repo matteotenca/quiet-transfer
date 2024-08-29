@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=60", "cffi>=1.12.0"]
+requires = ["setuptools>=60,<74", "cffi>=1.12.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,9 @@ dynamic = ["version"]
 authors = [{name = "Matteo Tenca", email = "matteo.tenca@gmail.com"}]
 license = {file = "LICENSE.md"}
 readme = "README.md"
+description = "Tool to send/receive text/binary file over audio via many modulation schemes"
 dependencies = ["cffi>=1.12.0", "pyaudio", "soundfile"]
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -40,11 +42,11 @@ where = ["src"]
 quiet-transfer = "quiettransfer.__main__:_main"
 
 [tool.cibuildwheel.windows]
-skip = "cp36-*"
+skip = "cp36-* cp37-* pp36* pp37*"
 archs = "auto64"
 
 [tool.cibuildwheel.linux]
-skip = "cp36-* *musl*"
+skip = "cp36-* cp37-* pp36* pp37* *musl*"
 archs = "auto64"
 container-engine = "podman"
-before-all = "yum -y install git portaudio-devel jansson-devel libsndfile-devel && git clone https://github.com/quiet/libfec && cd libfec && ./configure --prefix=/usr && make && make install && strip -s /usr/lib/libfec.so && strip -s /usr/lib/libfec.a && cd .. && git clone https://github.com/quiet/quiet-dsp && cd quiet-dsp && git checkout devel &&  mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make -j4 && make install && strip -s /usr/lib/libliquid.so && strip -s /usr/lib/libliquid.a && cd .. && cd .. && git clone https://github.com/quiet/quiet && cd quiet && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make && make install && strip -s /usr/lib/libquiet.so && strip -s /usr/lib/libquiet.a"
+before-all = "yum -y install git portaudio-devel jansson-devel libsndfile-devel && git clone https://github.com/quiet/libfec && cd libfec && ./configure --prefix=/usr && make -j && make install && strip -s /usr/lib/libfec.so && strip -s /usr/lib/libfec.a && cd .. && git clone https://github.com/quiet/quiet-dsp && cd quiet-dsp && git checkout devel &&  mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DLIQUID_BUILD_EXAMPLES=OFF -DLIQUID_BUILD_SANDBOX=OFF -S .. -B . && make -j && make install && strip -s /usr/lib/libliquid.so && strip -s /usr/lib/libliquid.a && cd .. && cd .. && git clone https://github.com/quiet/quiet && cd quiet && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make -j && make install && strip -s /usr/lib/libquiet.so && strip -s /usr/lib/libquiet.a"
