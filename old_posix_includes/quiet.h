@@ -1,5 +1,15 @@
+#ifndef QUIET_H
+#define QUIET_H
 
-typedef int... time_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 /**
  * Representation for single sample containing sound
@@ -796,7 +806,7 @@ void quiet_encoder_set_nonblocking(quiet_encoder *e);
  * quiet_encoder_set_blocking on a host without pthread will assert
  * false.
  */
-//void quiet_encoder_set_emit_blocking(quiet_encoder *e, time_t sec, long nano);
+void quiet_encoder_set_emit_blocking(quiet_encoder *e, time_t sec, long nano);
 
 /**
  * Set nonblocking mode of quiet_encoder_emit
@@ -807,7 +817,7 @@ void quiet_encoder_set_nonblocking(quiet_encoder *e);
  * restores the default behavior after quiet_encoder_set_emit_blocking has
  * been called.
  */
-//void quiet_encoder_set_emit_nonblocking(quiet_encoder *e);
+void quiet_encoder_set_emit_nonblocking(quiet_encoder *e);
 
 /**
  * Clamp frame length to largest possible for sample length
@@ -1133,3 +1143,9 @@ void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
  * functions on the decoder.
  */
 void quiet_decoder_destroy(quiet_decoder *d);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

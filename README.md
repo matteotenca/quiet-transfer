@@ -15,7 +15,7 @@ pip install quiet-transfer
 
 #### Dependencies
 
-`cffi>=1.12.0`, `pyaudio`, `soundfile`
+`cffi>=1.12.0`, `sounddevice`, `soundfile`
 
 ## Documentation
 

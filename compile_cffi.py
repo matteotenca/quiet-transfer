@@ -20,7 +20,7 @@ from cffi import FFI
 from pathlib import Path
 
 ffibuilder = FFI()
-if sys.platform == 'win32':
+if sys.platform.find("win32") >= 0:
     ffi_include = Path().absolute().joinpath("include_win32").joinpath("quiet_portaudio_all_cleaned_cffi.h").as_posix()
     with open(ffi_include) as h_file:
         ffibuilder.cdef(h_file.read())
@@ -30,22 +30,33 @@ if sys.platform == 'win32':
                                     #include "quiet_portaudio_all_cleaned.h"
                                     
                                     """,
-                              libraries=["quiet", "jansson", "fec", "liquid", "portaudio"],
+                              libraries=["quiet", "jansson", "fec", "liquid"],
                               include_dirs=[Path().absolute().joinpath("include_win32").as_posix()],
                               library_dirs=[Path().absolute().joinpath("lib_win32").as_posix()],
                               )
-else:
+elif sys.platform.find("linux") >= 0:
     ffi_include = Path().absolute().joinpath("include_posix").joinpath("quiet_cffi.h").as_posix()
     with open(ffi_include) as h_file:
         ffibuilder.cdef(h_file.read())
         ffibuilder.set_source("quiettransfer._quiettransferposix",  # name of the output C extension
                               """
-                                    #include "portaudio.h"
                                     #include "quiet.h"
-                                    #include "quiet-portaudio.h"
                                     """,
-                              libraries=["quiet", "jansson", "fec", "liquid", "portaudio"],
+                              libraries=["quiet", "jansson", "fec", "liquid"],
                               include_dirs=[Path().absolute().joinpath("include_posix").as_posix()],
+                              )
+elif sys.platform.find("darwin") >= 0:
+    ffi_include = Path().absolute().joinpath("include_macos").joinpath("quiet_cffi.h").as_posix()
+    with open(ffi_include) as h_file:
+        ffibuilder.cdef(h_file.read())
+        ffibuilder.set_source("quiettransfer._quiettransfermacos",  # name of the output C extension
+                              """
+                                    #include "quiet.h"
+                              """,
+                              libraries=["quiet", "jansson", "fec", "liquid"],
+                              include_dirs=[Path().absolute().joinpath("include_macos").as_posix(),
+                                            Path("/tmp/build_deps/staging/usr/include").absolute().as_posix()],
+                              library_dirs=[Path("/tmp/build_deps/staging/usr/lib").absolute().as_posix()],
                               )
 
 if __name__ == "__main__":
