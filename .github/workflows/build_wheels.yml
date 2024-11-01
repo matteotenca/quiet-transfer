@@ -1,4 +1,4 @@
-name: Build2
+name: Build
 
 on: [push, workflow_dispatch]
 
@@ -16,9 +16,6 @@ jobs:
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.21.3
-        # env:
-        #   CIBW_SOME_OPTION: value
-        #    ...
         with:
            package-dir: .
            output-dir: wheelhouse

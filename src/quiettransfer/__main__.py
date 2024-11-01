@@ -44,12 +44,6 @@ def _main() -> int:
     sender.add_argument(
         "-o", "--output-wav", help="write audio to this wav file.",
         metavar="<wavoutputfile>", default=None)
-    # sender.add_argument(
-    #     "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
-    #     default="audible")
-    # sender.add_argument(
-    #     "-f", "--file-transfer", help="enable file transfer mode.",
-    #     action="store_true", default=False)
     sender.set_defaults(command="send")
 
     # noinspection PyTypeChecker
@@ -65,15 +59,9 @@ def _main() -> int:
     receiver.add_argument(
         "-d", "--dump", help="dump received audio to this wav file.",
         metavar="<dumpfile>", default=None)
-    # receiver.add_argument(
-    #     "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
-    #     default="audible",)
     receiver.add_argument(
         "-i", "--input-wav", help="WAV file to read from.",
         metavar="<wavinputfile>", default=None)
-    # receiver.add_argument(
-    #     "-f", "--file-transfer", help="enable file transfer mode.",
-    #     action="store_true", default=False)
     receiver.set_defaults(command="receive")
 
     for sub in subparsers.choices.values():

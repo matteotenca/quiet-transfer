@@ -30,7 +30,6 @@ from typing import Optional, Any
 
 # noinspection PyPackageRequirements
 import sounddevice as sd # type: ignore
-# import pyaudio
 # noinspection PyPackageRequirements
 import soundfile as sf # type: ignore
 
@@ -48,7 +47,6 @@ class ReceiveFile:
         self._ffi = quiettransfer.ffi
         self._profile_file = quiettransfer.profile_file
 
-        # self._win32 = True if sys.platform == "win32" else False
         self._script = True if args is not None else False
 
         if args is not None:
@@ -86,25 +84,16 @@ class ReceiveFile:
         self._output_file_fw: Optional[FileIO] = None
         self._input_wav_fw = None
         self._dump_wav_fw = None
-        # self._p: Optional[pyaudio.PyAudio] = None
-        # self._stream: Optional[pyaudio.Stream] = None
         self._stream: Optional[sd.RawInputStream] = None
         self._d = None
         self._samplerate = 44100
 
     def receive_file(self) -> int:
-        # if self._win32:
-        #     return self._receive_file_win32()
-        # else:
-        # return self._receive_file_posix()
         return self._receive_file_generic()
 
     def _print_msg(self, msg: str, **kwargs: Any) -> None:
         if self._script:
             print(msg, flush=True, file=sys.stderr, **kwargs)
-
-    # def _receive_file_posix(self) -> int:
-    #     return self._receive_file_generic()
 
     def _receive_file_generic(self) -> int:
         done = False
@@ -132,9 +121,6 @@ class ReceiveFile:
                 else:
                     raise IOError(f"Input wav file {self._input_wav} not found.")
             else:
-                # self._p = pyaudio.PyAudio()
-                # self._stream = self._p.open(format=pyaudio.paFloat32, channels=1, rate=self._samplerate, input=True,
-                #                             frames_per_buffer=4096)
                 self._stream = sd.RawInputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=4096)
                 self._stream.start()
             write_buffer_size = 16 * 1024
@@ -256,11 +242,8 @@ class ReceiveFile:
             if self._d is not None:
                 self._lib.quiet_decoder_destroy(self._d)
             if self._stream is not None:
-                # self._stream.stop_stream()
                 self._stream.stop()
                 self._stream.close()
-            # if self._p is not None:
-            #     self._p.terminate()
             if self._input_wav_fw is not None:
                 self._input_wav_fw.close()
         return 0

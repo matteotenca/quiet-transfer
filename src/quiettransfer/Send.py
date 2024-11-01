@@ -21,7 +21,6 @@ import os
 import sys
 from io import FileIO, BufferedReader
 # noinspection PyPackageRequirements
-# import pyaudio
 import sounddevice as sd # type: ignore
 # noinspection PyPackageRequirements
 import soundfile as sf # type: ignore
@@ -42,11 +41,8 @@ class SendFile:
         self._ffi = quiettransfer.ffi
         self._profile_file = quiettransfer.profile_file
         self._fw: Optional[sf.SoundFile] = None
-        # self._stream: Optional[pyaudio.Stream] = None
         self._stream: Optional[sd.RawOutputStream] = None
-        # self._win32 = True if sys.platform == "win32" else False
         self._script = True if args is not None else False
-        # self._p: Optional[pyaudio.PyAudio] = None
         self._fi: Union[FileIO, BufferedReader, None] = None
         self._input_data: Union[quiettransfer.CompressFile, BinaryIO, None] = None
         self._e = None
@@ -91,7 +87,6 @@ class SendFile:
     def _write_data(self, data_buf: bytes) -> None:
         if isinstance(self._fw, sf.SoundFile):
             self._fw.buffer_write(data_buf, 'float32')
-        # elif isinstance(self._stream, pyaudio.PyAudio.Stream):
         elif isinstance(self._stream, sd.RawOutputStream):
             self._stream.write(data_buf)
         else:
@@ -112,9 +107,6 @@ class SendFile:
                 self._fw = sf.SoundFile(self._output_wav, 'w', channels=1, samplerate=self._samplerate,
                                         format='WAV', subtype="FLOAT")
             else:
-                # self._p = pyaudio.PyAudio()
-                # self._stream = self._p.open(format=pyaudio.paFloat32, channels=1, rate=self._samplerate, output=True,
-                #                             frames_per_buffer=4096)
                 self._stream = sd.RawOutputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=4096)
                 self._stream.start()
             if self._input_file and self._input_file != "-":
@@ -158,7 +150,6 @@ class SendFile:
             tt = time.time() - t
             self._write_data(b'0' * quiet_sample_t_size * self._samplerate * self._trailing_silence)
             if isinstance(self._buf, CompressFile) and self._buf.size > 0:
-                # tt = time.time() - t - self._trailing_silence
                 self._print_msg(f"\nTime taken to encode waveform: {tt}")
                 self._print_msg(f"Speed: {(self._buf.size + self._buf.header_size) / tt} B/s")
         except KeyboardInterrupt:
@@ -187,11 +178,8 @@ class SendFile:
             if self._fw is not None:
                 self._fw.close()
             if self._stream is not None:
-                # self._stream.stop_stream()
                 self._stream.stop()
                 self._stream.close()
-            # if self._p is not None:
-            #     self._p.terminate()
             if self._fi is not None:
                 self._fi.close()
             if self._e is not None:
