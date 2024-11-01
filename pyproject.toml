@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=60", "cffi>=1.12.0"]
+requires = ["setuptools>=60,<74", "cffi>=1.12.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -44,6 +44,7 @@ quiet-transfer = "quiettransfer.__main__:_main"
 [tool.cibuildwheel.windows]
 skip = "cp36-* cp37-* pp36* pp37*"
 archs = "auto64"
+#build-verbosity = 2
 
 [tool.cibuildwheel.linux]
 skip = "cp36-* cp37-* pp36* pp37* *musl*"
