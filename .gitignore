@@ -8,3 +8,8 @@
 /_dist/
 /wheelhouse/
 /.dmypy.json
+/*.dylib
+/old_posix_includes/
+/old_windows_includes/
+/old_windows_libs/
+/mypy.ini

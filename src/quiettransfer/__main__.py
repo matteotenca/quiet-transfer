@@ -44,12 +44,6 @@ def _main() -> int:
     sender.add_argument(
         "-o", "--output-wav", help="write audio to this wav file.",
         metavar="<wavoutputfile>", default=None)
-    sender.add_argument(
-        "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
-        default="audible")
-    sender.add_argument(
-        "-f", "--file-transfer", help="enable file transfer mode.",
-        action="store_true", default=False)
     sender.set_defaults(command="send")
 
     # noinspection PyTypeChecker
@@ -66,15 +60,20 @@ def _main() -> int:
         "-d", "--dump", help="dump received audio to this wav file.",
         metavar="<dumpfile>", default=None)
     receiver.add_argument(
-        "-p", "--protocol", help="protocol", metavar="<protocol>", choices=quiettransfer.protocols,
-        default="audible",)
-    receiver.add_argument(
         "-i", "--input-wav", help="WAV file to read from.",
         metavar="<wavinputfile>", default=None)
-    receiver.add_argument(
-        "-f", "--file-transfer", help="enable file transfer mode.",
-        action="store_true", default=False)
     receiver.set_defaults(command="receive")
+
+    for sub in subparsers.choices.values():
+        sub.add_argument("-V", "--version", help="print version number.", action="version",
+                         version=f"%(prog)s {quiettransfer.__version__}")
+        sub.add_argument("-z", "--zlib", default=False, action="store_true",
+                         help="Use zlib to compress/decompress data.")
+        sub.add_argument("-f", "--file-transfer", help="enable file transfer mode.",
+                         action="store_true", default=False)
+        prot = list(quiettransfer.protocols)
+        sub.add_argument("-p", "--protocol", help=f"a protocol name in {', '.join(prot)}", metavar="<protocol>",
+                         choices=quiettransfer.protocols, default="audible")
 
     args: argparse.Namespace = parser.parse_args()
 

@@ -1,5 +1,15 @@
+#ifndef QUIET_H
+#define QUIET_H
 
-typedef int... time_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 /**
  * Representation for single sample containing sound
@@ -981,7 +991,7 @@ ssize_t quiet_decoder_recv(quiet_decoder *d, uint8_t *data, size_t len);
  * false.
  *
  */
-void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
+//void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
 
 /**
  * Set nonblocking mode of quiet_decoder_recv
@@ -993,7 +1003,7 @@ void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
  * been called.
  *
  */
-void quiet_decoder_set_nonblocking(quiet_decoder *d);
+//void quiet_decoder_set_nonblocking(quiet_decoder *d);
 
 /**
  * Feed received sound samples to decoder
@@ -1120,9 +1130,9 @@ void quiet_decoder_enable_stats(quiet_decoder *d);
  */
 void quiet_decoder_disable_stats(quiet_decoder *d);
 
-void quiet_decoder_set_stats_blocking(quiet_decoder *d, time_t sec, long nano);
+//void quiet_decoder_set_stats_blocking(quiet_decoder *d, time_t sec, long nano);
 
-void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
+//void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
 
 /**
  * Destroy decoder
@@ -1133,3 +1143,9 @@ void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
  * functions on the decoder.
  */
 void quiet_decoder_destroy(quiet_decoder *d);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

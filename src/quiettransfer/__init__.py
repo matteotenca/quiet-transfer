@@ -19,11 +19,20 @@ import json
 import os
 import sys
 
-if sys.platform == 'win32':
-    os.add_dll_directory(os.path.join(os.path.dirname(__file__), "dll_win32"))
-    from ._quiettransferwin32 import lib, ffi # type: ignore
-else:
-    from ._quiettransferposix import lib, ffi # type: ignore
+try:
+    if sys.platform.find("win32") >= 0:
+        os.add_dll_directory(os.path.join(os.path.dirname(__file__), "dll_win32"))
+        from ._quiettransferwin32 import lib, ffi # type: ignore
+    elif sys.platform.find("linux") >= 0:
+        from ._quiettransferposix import lib, ffi # type: ignore
+    elif sys.platform.find("darwin") >= 0:
+        from ._quiettransfermacos import lib, ffi # type: ignore
+    else:
+        raise OSError()
+except OSError as e:
+    raise OSError from e
+
+from .Reader import CompressFile
 from .Send import SendFile
 from .Receive import ReceiveFile
 
@@ -32,5 +41,6 @@ profile_file = os.path.join(os.path.dirname(__file__), "quiet-profiles.json")
 profile = json.load(open(profile_file))
 protocols = profile.keys()
 
-__version__ = "0.2.6"
-__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__"]
+__version__ = "0.2.7"
+# noinspection PyUnresolvedReferences
+__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__", "CompressFile"]

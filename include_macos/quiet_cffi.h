@@ -761,7 +761,7 @@ ssize_t quiet_encoder_send(quiet_encoder *e, const void *buf, size_t len);
  * false.
  *
  */
-void quiet_encoder_set_blocking(quiet_encoder *e, time_t sec, long nano);
+//void quiet_encoder_set_blocking(quiet_encoder *e, time_t sec, long nano);
 
 /**
  * Set nonblocking mode of quiet_encoder_send
@@ -773,7 +773,7 @@ void quiet_encoder_set_blocking(quiet_encoder *e, time_t sec, long nano);
  * been called.
  *
  */
-void quiet_encoder_set_nonblocking(quiet_encoder *e);
+//void quiet_encoder_set_nonblocking(quiet_encoder *e);
 
 /**
  * Set blocking mode of quiet_encoder_emit
@@ -981,7 +981,7 @@ ssize_t quiet_decoder_recv(quiet_decoder *d, uint8_t *data, size_t len);
  * false.
  *
  */
-void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
+//void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
 
 /**
  * Set nonblocking mode of quiet_decoder_recv
@@ -993,7 +993,7 @@ void quiet_decoder_set_blocking(quiet_decoder *d, time_t sec, long nano);
  * been called.
  *
  */
-void quiet_decoder_set_nonblocking(quiet_decoder *d);
+//void quiet_decoder_set_nonblocking(quiet_decoder *d);
 
 /**
  * Feed received sound samples to decoder
@@ -1120,9 +1120,9 @@ void quiet_decoder_enable_stats(quiet_decoder *d);
  */
 void quiet_decoder_disable_stats(quiet_decoder *d);
 
-void quiet_decoder_set_stats_blocking(quiet_decoder *d, time_t sec, long nano);
+//void quiet_decoder_set_stats_blocking(quiet_decoder *d, time_t sec, long nano);
 
-void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
+//void quiet_decoder_set_stats_nonblocking(quiet_decoder *d);
 
 /**
  * Destroy decoder

@@ -9,7 +9,7 @@ authors = [{name = "Matteo Tenca", email = "matteo.tenca@gmail.com"}]
 license = {file = "LICENSE.md"}
 readme = "README.md"
 description = "Tool to send/receive text/binary file over audio via many modulation schemes"
-dependencies = ["cffi>=1.12.0", "pyaudio", "soundfile"]
+dependencies = ["cffi>=1.12.0", "sounddevice", "soundfile"]
 requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -44,9 +44,93 @@ quiet-transfer = "quiettransfer.__main__:_main"
 [tool.cibuildwheel.windows]
 skip = "cp36-* cp37-* pp36* pp37*"
 archs = "auto64"
+#build-verbosity = 2
 
 [tool.cibuildwheel.linux]
 skip = "cp36-* cp37-* pp36* pp37* *musl*"
 archs = "auto64"
 container-engine = "podman"
-before-all = "yum -y install git portaudio-devel jansson-devel libsndfile-devel && git clone https://github.com/quiet/libfec && cd libfec && ./configure --prefix=/usr && make -j && make install && strip -s /usr/lib/libfec.so && strip -s /usr/lib/libfec.a && cd .. && git clone https://github.com/quiet/quiet-dsp && cd quiet-dsp && git checkout devel &&  mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -DLIQUID_BUILD_EXAMPLES=OFF -DLIQUID_BUILD_SANDBOX=OFF -S .. -B . && make -j && make install && strip -s /usr/lib/libliquid.so && strip -s /usr/lib/libliquid.a && cd .. && cd .. && git clone https://github.com/quiet/quiet && cd quiet && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B . && make -j && make install && strip -s /usr/lib/libquiet.so && strip -s /usr/lib/libquiet.a"
+before-all = [
+    "yum -y install git jansson-devel",
+    "git clone https://github.com/quiet/libfec",
+    "cd libfec",
+    "curl -o config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'",
+    "curl -o config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'",
+    "./configure --prefix=/usr",
+    "make -j",
+    "make install",
+    "strip -s /usr/lib/libfec.so",
+    "strip -s /usr/lib/libfec.a",
+    "cd ..",
+    "git clone https://github.com/quiet/quiet-dsp",
+    "cd quiet-dsp",
+    "git checkout devel",
+    "mkdir build",
+    "cd build",
+    "cmake -DCMAKE_INSTALL_PREFIX=/usr -DLIQUID_BUILD_EXAMPLES=OFF -DLIQUID_BUILD_SANDBOX=OFF -S .. -B .",
+    "make -j",
+    "make install/strip",
+    "cd ..",
+    "cd ..",
+    "git clone https://github.com/quiet/quiet",
+    "cd quiet",
+    "mkdir build",
+    "cd build",
+    "cmake -DCMAKE_INSTALL_PREFIX=/usr -S .. -B .",
+    "make -j",
+    "make install/strip",
+    ]
+[tool.cibuildwheel.macos]
+#skip = "cp36-* cp37-* pp36* pp37* *musl*"
+#build = "cp31*-macosx_x86_64 cp38-macosx_x86_64 cp39-macosx_x86_64"
+before-all = [
+#    "exit",
+    "rm -rf /tmp/build_deps",
+#    "cwd=`pwd`",
+    "mkdir -p /tmp/build_deps",
+    "cd /tmp/build_deps",
+    "curl -JOL https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2",
+    "tar xf jansson-2.14.tar.bz2",
+    "cd jansson-2.14",
+    "./configure --prefix=/tmp/build_deps/staging/usr",
+    "make -j install-strip",
+    "cd ..",
+    "git clone https://github.com/quiet/libfec",
+    "cd libfec",
+    "curl -o config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'",
+    "curl -o config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD'",
+    "./configure --prefix=/tmp/build_deps/staging/usr",
+    "make -j",
+    "make install",
+    "cd /tmp/build_deps",
+    "git clone https://github.com/quiet/quiet-dsp",
+    "cd quiet-dsp",
+    "git checkout devel",
+    "mkdir build",
+    "cd build",
+    "cmake -DCMAKE_INSTALL_PREFIX=/tmp/build_deps/staging/usr -DLIQUID_BUILD_EXAMPLES=OFF -DLIQUID_BUILD_SANDBOX=OFF -DCMAKE_INSTALL_NAME_DIR='' -S .. -B .",
+    "make -j",
+    "make install/strip",
+    "cd /tmp/build_deps",
+    "git clone https://github.com/quiet/quiet",
+    "cd quiet",
+    "mkdir build",
+    "cd build",
+    "cmake -DCMAKE_INSTALL_PREFIX=/tmp/build_deps/staging/usr -DCMAKE_BUILD_TYPE=RELEASE -Djansson_include=/tmp/build_deps/staging/usr/include -Djansson_library=/tmp/build_deps/staging/usr/lib/libjansson.4.dylib -Dliquid_include=/tmp/build_deps/staging/usr/include -Dliquid_library=/private/tmp/build_deps/staging/usr/lib/libliquid.dylib -DCMAKE_INSTALL_NAME_DIR='' -S .. -B .",
+#    "sleep 20",
+    "make -j",
+    "make install/strip",
+#    "cd /tmp/build_deps/staging/usr/lib",
+#    'cp libfec.dylib libliquid.1.3.1.dylib libquiet.dylib "$cwd"'
+    ]
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_*"
+inherit.repair-wheel-command = "prepend"
+repair-wheel-command = "cp /tmp/build_deps/staging/usr/lib/libfec.dylib /tmp/build_deps/staging/usr/lib/libliquid.1.3.1.dylib /tmp/build_deps/staging/usr/lib/libquiet.dylib ."
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_*"
+inherit.repair-wheel-command = "append"
+repair-wheel-command = "rm libfec.dylib libliquid.1.3.1.dylib libquiet.dylib "
+#/tmp/build_deps/staging/usr
+#-DCMAKE_INSTALL_NAME_DIR=""
