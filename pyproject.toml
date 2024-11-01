@@ -82,7 +82,7 @@ before-all = [
     ]
 [tool.cibuildwheel.macos]
 #skip = "cp36-* cp37-* pp36* pp37* *musl*"
-build = "cp31*-macosx_x86_64 cp38-macosx_x86_64 cp39-macosx_x86_64"
+#build = "cp31*-macosx_x86_64 cp38-macosx_x86_64 cp39-macosx_x86_64"
 before-all = [
 #    "exit",
     "rm -rf /tmp/build_deps",
