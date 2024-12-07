@@ -41,6 +41,6 @@ profile_file = os.path.join(os.path.dirname(__file__), "quiet-profiles.json")
 profile = json.load(open(profile_file))
 protocols = profile.keys()
 
-__version__ = "0.2.7"
+__version__ = "0.2.16"
 # noinspection PyUnresolvedReferences
 __all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__", "CompressFile"]

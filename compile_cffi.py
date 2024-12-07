@@ -28,7 +28,7 @@ if sys.platform.find("win32") >= 0:
                               """
                                     #include "quiet.h"
                                     """,
-                              libraries=["quiet", "jansson", "fec", "liquid"],
+                              libraries=["quiet", "jansson", "fec", "liquid", "pthreadVC3"],
                               include_dirs=[Path().absolute().joinpath("include_win32").as_posix()],
                               library_dirs=[Path().absolute().joinpath("lib_win32").as_posix()],
                               )

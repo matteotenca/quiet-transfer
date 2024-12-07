@@ -81,12 +81,8 @@ before-all = [
     "make install/strip",
     ]
 [tool.cibuildwheel.macos]
-#skip = "cp36-* cp37-* pp36* pp37* *musl*"
-#build = "cp31*-macosx_x86_64 cp38-macosx_x86_64 cp39-macosx_x86_64"
 before-all = [
-#    "exit",
     "rm -rf /tmp/build_deps",
-#    "cwd=`pwd`",
     "mkdir -p /tmp/build_deps",
     "cd /tmp/build_deps",
     "curl -JOL https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2",
@@ -117,12 +113,10 @@ before-all = [
     "mkdir build",
     "cd build",
     "cmake -DCMAKE_INSTALL_PREFIX=/tmp/build_deps/staging/usr -DCMAKE_BUILD_TYPE=RELEASE -Djansson_include=/tmp/build_deps/staging/usr/include -Djansson_library=/tmp/build_deps/staging/usr/lib/libjansson.4.dylib -Dliquid_include=/tmp/build_deps/staging/usr/include -Dliquid_library=/private/tmp/build_deps/staging/usr/lib/libliquid.dylib -DCMAKE_INSTALL_NAME_DIR='' -S .. -B .",
-#    "sleep 20",
     "make -j",
     "make install/strip",
-#    "cd /tmp/build_deps/staging/usr/lib",
-#    'cp libfec.dylib libliquid.1.3.1.dylib libquiet.dylib "$cwd"'
     ]
+
 [[tool.cibuildwheel.overrides]]
 select = "*-macosx_*"
 inherit.repair-wheel-command = "prepend"
@@ -132,5 +126,3 @@ repair-wheel-command = "cp /tmp/build_deps/staging/usr/lib/libfec.dylib /tmp/bui
 select = "*-macosx_*"
 inherit.repair-wheel-command = "append"
 repair-wheel-command = "rm libfec.dylib libliquid.1.3.1.dylib libquiet.dylib "
-#/tmp/build_deps/staging/usr
-#-DCMAKE_INSTALL_NAME_DIR=""

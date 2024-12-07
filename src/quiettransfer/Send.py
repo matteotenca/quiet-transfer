@@ -17,6 +17,7 @@
 """
 import argparse
 import io
+import queue
 import os
 import sys
 from io import FileIO, BufferedReader
@@ -35,8 +36,9 @@ class SendFile:
 
     def __init__(self, args: Optional[argparse.Namespace] = None,
                  input_file: str = "-", output_wav: Optional[str] = None,
-                 protocol: str = "audible", file_transfer: bool = False, zlb: bool = False) -> None:
+                 protocol: str = "audible", file_transfer: bool = False, zlb: bool = False, mqueue: Optional[queue.Queue] = None) -> None:
 
+        self._break = False
         self._lib = quiettransfer.lib
         self._ffi = quiettransfer.ffi
         self._profile_file = quiettransfer.profile_file
@@ -49,6 +51,7 @@ class SendFile:
         self._trailing_silence = 1
         self._initial_silence = 1
         self._buf: Optional[quiettransfer.CompressFile] = None
+        self._queue = mqueue
 
         if args is not None:
             # called from command line
@@ -80,9 +83,14 @@ class SendFile:
     def send_file(self) -> int:
         return self._send_file()
 
+    def stop(self, stp: bool) -> None:
+        self._break = stp
+
     def _print_msg(self, msg: str, **kwargs: Any) -> None:
         if self._script:
             print(msg, flush=True, file=sys.stderr, **kwargs)
+        elif self._queue:
+            self._queue.put(msg, True)
 
     def _write_data(self, data_buf: bytes) -> None:
         if isinstance(self._fw, sf.SoundFile):
@@ -94,29 +102,32 @@ class SendFile:
 
     def _send_file(self) -> int:
         total = 0
+        size = 0
         quiet_sample_t_size = self._ffi.sizeof("quiet_sample_t")
         try:
             opt = self._lib.quiet_encoder_profile_filename(self._profile_file.encode(), self._protocol.encode())
             self._e = self._lib.quiet_encoder_create(opt, self._samplerate)
             done = False
-            block_len = 16 * 1024
-            samplebuf_len = 16 * 1024
+            block_len = 4 * 1024
+            samplebuf_len = 4 * 1024
             samplebuf = self._ffi.new(f"quiet_sample_t[{samplebuf_len}]")
             if self._output_wav is not None:
                 self._lib.quiet_encoder_clamp_frame_len(self._e, samplebuf_len)
                 self._fw = sf.SoundFile(self._output_wav, 'w', channels=1, samplerate=self._samplerate,
                                         format='WAV', subtype="FLOAT")
             else:
-                self._stream = sd.RawOutputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=4096)
+                self._stream = sd.RawOutputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=block_len)
                 self._stream.start()
             if self._input_file and self._input_file != "-":
                 p = Path(self._input_file)
                 if p.is_file():
                     if self._file_transfer:
-                        self._buf = quiettransfer.CompressFile(self._input_file, compress=self._zlb, is_script=self._script)
+                        self._buf = quiettransfer.CompressFile(self._input_file, compress=self._zlb, is_script=self._script, mqueue=self._queue)
                         total -= self._buf.header_size
                         self._input_data = self._buf
                     else:
+                        s = p.stat()
+                        size = s.st_size
                         self._fi = open(self._input_file, "rb")
                         self._input_data = self._fi
                 else:
@@ -144,30 +155,35 @@ class SendFile:
                     self._print_msg(f"Sent: {total}    \r", end="")
                 written = samplebuf_len
                 while written == samplebuf_len:
+                    if self._break:
+                        return 1
                     written = self._lib.quiet_encoder_emit(self._e, samplebuf, samplebuf_len)
                     if written > 0:
                         self._write_data(self._ffi.buffer(samplebuf))
             tt = time.time() - t
             self._write_data(b'0' * quiet_sample_t_size * self._samplerate * self._trailing_silence)
-            if isinstance(self._buf, CompressFile) and self._buf.size > 0:
+            if self._file_transfer:
                 self._print_msg(f"\nTime taken to encode waveform: {tt}")
-                self._print_msg(f"Speed: {(self._buf.size + self._buf.header_size) / tt} B/s")
+                if isinstance(self._buf, CompressFile) and self._buf.size > 0:
+                    self._print_msg(f"Speed: {(self._buf.size + self._buf.header_size) / tt} B/s")
+                else:
+                    self._print_msg(f"Speed: {size / tt} B/s")
         except KeyboardInterrupt:
             return 1
         except IOError as ex:
-            if self._script:
+            if self._script or self._queue:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except ValueError as ex:
-            if self._script:
+            if self._script or self._queue:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except Exception as ex:
-            if self._script:
+            if self._script or self._queue:
                 self._print_msg(str(ex))
                 return 1
             else:

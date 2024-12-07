@@ -17,6 +17,7 @@
 """
 import io
 import json
+import queue
 import struct
 import sys
 import zlib
@@ -26,12 +27,13 @@ from typing import Optional, Any
 
 class CompressFile(io.BytesIO):
 
-    def __init__(self, input_file: str, compress: bool = False, is_script: bool = True):
+    def __init__(self, input_file: str, compress: bool = False, is_script: bool = True, mqueue: Optional[queue.Queue] = None):
         super().__init__()
         self._compressor_active = compress
         self.is_script = is_script
         self._input_file = input_file
         self._compressor = zlib.compressobj(level=9) if compress else None
+        self._queue = mqueue
         self._buf = io.BytesIO()
         self.header_size = 0
         self._pointer = 0
@@ -185,3 +187,5 @@ class CompressFile(io.BytesIO):
     def _print_msg(self, msg: str, **kwargs: Any) -> None:
         if self.is_script:
             print(msg, flush=True, file=sys.stderr, **kwargs)
+        elif self._queue:
+            self._queue.put(msg, True)

@@ -19,6 +19,7 @@ import argparse
 import binascii
 import io
 import json
+import queue
 import os
 import struct
 import sys
@@ -32,7 +33,6 @@ from typing import Optional, Any
 import sounddevice as sd # type: ignore
 # noinspection PyPackageRequirements
 import soundfile as sf # type: ignore
-
 import quiettransfer
 
 
@@ -41,8 +41,10 @@ class ReceiveFile:
     def __init__(self, args: Optional[argparse.Namespace] = None,
                  output: Optional[str] = "-", overwrite: bool = False, dump: Optional[str] = None,
                  protocol: str = "audible", input_wav: Optional[str] = None,
-                 file_transfer: bool = False, zlb: bool = False) -> None:
+                 file_transfer: bool = False, zlb: bool = False, mqueue: Optional[queue.Queue] = None) -> None:
 
+        self._break = False
+        self._stopped = False
         self._lib = quiettransfer.lib
         self._ffi = quiettransfer.ffi
         self._profile_file = quiettransfer.profile_file
@@ -67,18 +69,9 @@ class ReceiveFile:
             self._file_transfer = file_transfer
             self._dump = dump
             self._zlb = zlb
+            self._queue = mqueue
 
         self._output = None
-
-        if self._output_file_name == "-":
-            if self._script:
-                if sys.stdout is not None and getattr(sys.stdout, "buffer", None) is not None:
-                    self._output = sys.stdout.buffer
-                else:
-                    sys.stdout = io.TextIOWrapper(open(os.devnull, "wb", buffering=0), encoding='utf-8')
-                    self._output = sys.stdout.buffer
-            else:
-                raise ValueError("No output file specified.")
 
         self._decompressor = zlib.decompressobj() if self._zlb else None
         self._output_file_fw: Optional[FileIO] = None
@@ -87,6 +80,7 @@ class ReceiveFile:
         self._stream: Optional[sd.RawInputStream] = None
         self._d = None
         self._samplerate = 44100
+        self._bufsize = 4 * 1024
 
     def receive_file(self) -> int:
         return self._receive_file_generic()
@@ -94,25 +88,40 @@ class ReceiveFile:
     def _print_msg(self, msg: str, **kwargs: Any) -> None:
         if self._script:
             print(msg, flush=True, file=sys.stderr, **kwargs)
+        elif self._queue:
+            self._queue.put(msg, True)
+
+    def stop(self, stp: bool) -> None:
+        self._break = stp
+        self._stopped = stp
 
     def _receive_file_generic(self) -> int:
-        done = False
         total = 0
         first = True
         size = -1
-        t = float(0)
+        t = -1
         crc32: str = ""
         c: bytes
 
         try:
-            if self._output_file_name and self._output_file_name != "-":
-                if (Path(self._output_file_name).is_file() and self._overwrite) or (not Path(self._output_file_name).exists()) and (not Path(self._output_file_name).is_dir()):
+            if self._output_file_name and self._output_file_name == "-":
+                if self._script or self._queue:
+                    if sys.stdout is not None and getattr(sys.stdout, "buffer", None) is not None:
+                        self._output = sys.stdout.buffer
+                    else:
+                        sys.stdout = io.TextIOWrapper(open(os.devnull, "wb", buffering=0), encoding='utf-8')
+                        self._output = sys.stdout.buffer
+                else:
+                    raise IOError(f"Output file is stdout but it does not exists!")
+            elif self._output_file_name and self._output_file_name != "-":
+                output_path = Path(self._output_file_name)
+                if (output_path.is_file() and self._overwrite) or (not output_path.exists()):
                     self._output_file_fw = open(self._output_file_name, "b+w", buffering=0)
                     self._output = self._output_file_fw
-                elif Path(self._output_file_name).exists():
-                    raise IOError(f"Output file {self._output_file_name} exists!")
-            if self._output is None:
-                raise IOError(f"Output file is stdout but it does not exists!")
+                elif output_path.is_file():
+                    raise IOError(f"Output file {self._output_file_name} already exists!")
+                else:
+                    raise IOError(f"Output file {self._output_file_name} is not valid!")
             if self._dump:
                 self._dump_wav_fw = sf.SoundFile(self._dump, "wb", samplerate=self._samplerate, channels=1, format='WAV', subtype="FLOAT")
             if self._input_wav:
@@ -121,18 +130,16 @@ class ReceiveFile:
                 else:
                     raise IOError(f"Input wav file {self._input_wav} not found.")
             else:
-                self._stream = sd.RawInputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=4096)
+                self._stream = sd.RawInputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=self._bufsize)
                 self._stream.start()
-            write_buffer_size = 16 * 1024
-            write_buffer = self._ffi.new(f"uint8_t[{write_buffer_size}]")
+            write_buffer = self._ffi.new(f"uint8_t[{self._bufsize}]")
             opt = self._lib.quiet_decoder_profile_filename(self._profile_file.encode(), self._protocol.encode())
             self._d = self._lib.quiet_decoder_create(opt, self._samplerate)
-            while not done:
-                ttt = time.time()
+            while not self._break:
                 if self._input_wav_fw is not None:
-                    sound_data = self._input_wav_fw.buffer_read(16 * 1024, 'float32')
+                    sound_data = self._input_wav_fw.buffer_read(self._bufsize, 'float32')
                 elif self._stream is not None:
-                    sound_data, overflowed = self._stream.read(16 * 1024)
+                    sound_data, overflowed = self._stream.read(self._bufsize)
                 else:
                     raise ValueError(f"\nERROR: Can't read sound data!")
                 if self._dump_wav_fw is not None:
@@ -141,15 +148,15 @@ class ReceiveFile:
                 read_size = int(len(sound_data) / self._ffi.sizeof("quiet_sample_t"))
                 sound_data_ctype = self._ffi.from_buffer("quiet_sample_t *", sound_data)
                 self._lib.quiet_decoder_consume(self._d, sound_data_ctype, read_size)
-                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, write_buffer_size)
-                tttt = time.time() - ttt
+                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, self._bufsize)
                 if decoded_size < 0:
                     continue
                 elif decoded_size == 0:
-                    # continue
                     self._print_msg(f"\nDecoded size is zero.")
-                    done = True
+                    self._break = True
                 else:
+                    if t < 0:
+                        t = time.time() - 2
                     if self._lib.quiet_decoder_checksum_fails(self._d):
                         raise ValueError(f"\nERROR: Checksum failed at block {total}")
                     if self._decompressor:
@@ -159,7 +166,6 @@ class ReceiveFile:
                         c = self._ffi.buffer(write_buffer)[0:decoded_size]
                     start = 0
                     if first and self._file_transfer:
-                        t = time.time() - tttt
                         first = False
                         packed_size = c[0:4]
                         header_len = struct.unpack("=L", packed_size)[0]
@@ -177,16 +183,17 @@ class ReceiveFile:
                         total += decoded_size
                         self._print_msg(f"Received: {total}  \r", end="")
                         if total == size:
-                            done = True
+                            self._break = True
                         elif total > size:
-                            raise ValueError("ERROR: received file is too big.")
+                            raise ValueError("\nERROR: received too many data.")
             self._lib.quiet_decoder_flush(self._d)
+            self._print_msg("")
             while True:
-                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, write_buffer_size)
-                if self._lib.quiet_decoder_checksum_fails(self._d):
-                    raise ValueError(f"\nERROR: Flushing, checksum failed at block {total}")
-                if decoded_size < 0:
+                decoded_size = self._lib.quiet_decoder_recv(self._d, write_buffer, self._bufsize)
+                if decoded_size <= 0:
                     break
+                if self._lib.quiet_decoder_checksum_fails(self._d):
+                    raise ValueError(f"ERROR: Flushing, checksum failed at block {total}")
                 if self._decompressor:
                     c = self._decompressor.decompress(self._ffi.buffer(write_buffer)[0:decoded_size])
                     decoded_size = len(c)
@@ -194,46 +201,50 @@ class ReceiveFile:
                     c = self._ffi.buffer(write_buffer)[0:decoded_size]
                 self._output.write(c[0:decoded_size])
                 self._output.flush()
+            if self._stopped:
+                return 1
             if self._file_transfer and self._output_file_fw is not None:
-                tt = time.time() - t
                 self._output.seek(0)
                 crc32r: int = binascii.crc32(self._output.read())
                 fixed_length_hex: str = f'{crc32r:08x}'
-                self._print_msg("")
                 if crc32 != fixed_length_hex:
-                    self._print_msg(f"ERROR: CRC32 mismatch!")
                     raise ValueError(f"ERROR: File checksum failed!")
                 else:
                     self._print_msg(f"CRC32 check passed.")
-                self._print_msg(f"Time taken to decode waveform: {tt}")
-                if tt > 0:
-                    self._print_msg(f"Speed: {size / tt} B/s")
+            tt = time.time() - t
+            self._print_msg(f"Time taken to decode waveform: {tt}")
+            if size > 0:
+                self._print_msg(f"Speed: {size / tt} B/s")
         except KeyboardInterrupt as ex:
-            if self._script:
+            if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except ValueError as ex:
-            if self._script:
+            if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except IOError as ex:
-            if self._script:
+            if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except zlib.error as ex:
-            if self._script:
+            if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except Exception as ex:
-            raise ex
+            if self._script or self._queue is not None:
+                self._print_msg(str(ex))
+                return 1
+            else:
+                raise ex
         finally:
             if self._output_file_fw is not None:
                 self._output_file_fw.close()
