@@ -32,6 +32,7 @@ try:
 except OSError as e:
     raise OSError from e
 
+from ._Exceptions import QuIOError, QuChecksumError, QuUnicodeError, QuArgumentsError, QuValueError
 from .Reader import CompressFile
 from .Send import SendFile
 from .Receive import ReceiveFile
@@ -41,6 +42,8 @@ profile_file = os.path.join(os.path.dirname(__file__), "quiet-profiles.json")
 profile = json.load(open(profile_file))
 protocols = profile.keys()
 
-__version__ = "0.2.16"
+__version__ = "0.2.20"
 # noinspection PyUnresolvedReferences
-__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__", "CompressFile"]
+__all__ = ["lib", "ffi", "profile_file", "protocols", "SendFile", "ReceiveFile", "__version__",
+           "CompressFile", "QuIOError", "QuChecksumError", "QuUnicodeError", "QuArgumentsError",
+           "QuValueError"]

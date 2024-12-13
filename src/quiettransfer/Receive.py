@@ -34,6 +34,7 @@ import sounddevice as sd # type: ignore
 # noinspection PyPackageRequirements
 import soundfile as sf # type: ignore
 import quiettransfer
+from quiettransfer import QuIOError, QuValueError, QuChecksumError
 
 
 class ReceiveFile:
@@ -112,23 +113,23 @@ class ReceiveFile:
                         sys.stdout = io.TextIOWrapper(open(os.devnull, "wb", buffering=0), encoding='utf-8')
                         self._output = sys.stdout.buffer
                 else:
-                    raise IOError(f"Output file is stdout but it does not exists!")
+                    raise QuIOError(f"Output file is stdout but it does not exists!")
             elif self._output_file_name and self._output_file_name != "-":
                 output_path = Path(self._output_file_name)
                 if (output_path.is_file() and self._overwrite) or (not output_path.exists()):
                     self._output_file_fw = open(self._output_file_name, "b+w", buffering=0)
                     self._output = self._output_file_fw
                 elif output_path.is_file():
-                    raise IOError(f"Output file {self._output_file_name} already exists!")
+                    raise QuIOError(f"Output file {self._output_file_name} already exists!")
                 else:
-                    raise IOError(f"Output file {self._output_file_name} is not valid!")
+                    raise QuIOError(f"Output file {self._output_file_name} is not valid!")
             if self._dump:
                 self._dump_wav_fw = sf.SoundFile(self._dump, "wb", samplerate=self._samplerate, channels=1, format='WAV', subtype="FLOAT")
             if self._input_wav:
                 if Path(self._input_wav).is_file():
                     self._input_wav_fw = sf.SoundFile(self._input_wav, "rb")
                 else:
-                    raise IOError(f"Input wav file {self._input_wav} not found.")
+                    raise QuIOError(f"Input wav file {self._input_wav} not found.")
             else:
                 self._stream = sd.RawInputStream(dtype="float32", channels=1, samplerate=float(self._samplerate), blocksize=self._bufsize)
                 self._stream.start()
@@ -141,7 +142,7 @@ class ReceiveFile:
                 elif self._stream is not None:
                     sound_data, overflowed = self._stream.read(self._bufsize)
                 else:
-                    raise ValueError(f"\nERROR: Can't read sound data!")
+                    raise QuValueError(f"Can't read sound data!")
                 if self._dump_wav_fw is not None:
                     self._dump_wav_fw.buffer_write(sound_data, 'float32')
                     self._dump_wav_fw.flush()
@@ -158,7 +159,7 @@ class ReceiveFile:
                     if t < 0:
                         t = time.time() - 2
                     if self._lib.quiet_decoder_checksum_fails(self._d):
-                        raise ValueError(f"\nERROR: Checksum failed at block {total}")
+                        raise QuChecksumError(f"Checksum failed at block {total}")
                     if self._decompressor:
                         c = self._decompressor.decompress(self._ffi.buffer(write_buffer)[0:decoded_size])
                         decoded_size = len(c)
@@ -185,7 +186,7 @@ class ReceiveFile:
                         if total == size:
                             self._break = True
                         elif total > size:
-                            raise ValueError("\nERROR: received too many data.")
+                            raise QuValueError("Received too many data.")
             self._lib.quiet_decoder_flush(self._d)
             self._print_msg("")
             while True:
@@ -193,7 +194,7 @@ class ReceiveFile:
                 if decoded_size <= 0:
                     break
                 if self._lib.quiet_decoder_checksum_fails(self._d):
-                    raise ValueError(f"ERROR: Flushing, checksum failed at block {total}")
+                    raise QuValueError(f"Flushing, checksum failed at block {total}")
                 if self._decompressor:
                     c = self._decompressor.decompress(self._ffi.buffer(write_buffer)[0:decoded_size])
                     decoded_size = len(c)
@@ -208,7 +209,7 @@ class ReceiveFile:
                 crc32r: int = binascii.crc32(self._output.read())
                 fixed_length_hex: str = f'{crc32r:08x}'
                 if crc32 != fixed_length_hex:
-                    raise ValueError(f"ERROR: File checksum failed!")
+                    raise QuValueError(f"File checksum failed!")
                 else:
                     self._print_msg(f"CRC32 check passed.")
             tt = time.time() - t
@@ -217,23 +218,41 @@ class ReceiveFile:
                 self._print_msg(f"Speed: {size / tt} B/s")
         except KeyboardInterrupt as ex:
             if self._script or self._queue is not None:
-                self._print_msg(str(ex))
+                self._print_msg(f"KeyboardInterrupt Error: {str(ex)}")
                 return 1
             else:
                 raise ex
         except ValueError as ex:
             if self._script or self._queue is not None:
-                self._print_msg(str(ex))
+                self._print_msg(f"ValueError: {str(ex)}")
                 return 1
             else:
                 raise ex
         except IOError as ex:
             if self._script or self._queue is not None:
-                self._print_msg(str(ex))
+                self._print_msg(f"IOError: {str(ex)}")
                 return 1
             else:
                 raise ex
         except zlib.error as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(f"zlib Error: {str(ex)}")
+                return 1
+            else:
+                raise ex
+        except QuChecksumError as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(str(ex))
+                return 1
+            else:
+                raise ex
+        except QuIOError as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(str(ex))
+                return 1
+            else:
+                raise ex
+        except QuValueError as ex:
             if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
@@ -241,7 +260,7 @@ class ReceiveFile:
                 raise ex
         except Exception as ex:
             if self._script or self._queue is not None:
-                self._print_msg(str(ex))
+                self._print_msg(f"Excpetion Error: {str(ex)}")
                 return 1
             else:
                 raise ex

@@ -20,6 +20,7 @@ import io
 import queue
 import os
 import sys
+import zlib
 from io import FileIO, BufferedReader
 # noinspection PyPackageRequirements
 import sounddevice as sd # type: ignore
@@ -29,7 +30,7 @@ import time
 from pathlib import Path
 from typing import Optional, Any, BinaryIO, Union
 import quiettransfer
-from quiettransfer import CompressFile
+from quiettransfer import CompressFile, QuIOError, QuArgumentsError, QuValueError
 
 
 class SendFile:
@@ -70,16 +71,6 @@ class SendFile:
 
         self._samplerate = 44100
 
-        if self._input_file == "-":
-            if self._script:
-                if sys.stdin is not None and getattr(sys.stdin, "buffer", None) is not None:
-                    self._input_data = sys.stdin.buffer
-                else:
-                    sys.stdin = io.TextIOWrapper(open(os.devnull, "wb", buffering=0), encoding='utf-8')
-                    self._input_data = sys.stdin.buffer
-            else:
-                raise ValueError("ERROR: No input file specified.")
-
     def send_file(self) -> int:
         return self._send_file()
 
@@ -98,13 +89,22 @@ class SendFile:
         elif isinstance(self._stream, sd.RawOutputStream):
             self._stream.write(data_buf)
         else:
-            raise IOError("ERROR: Unknown output stream.")
+            raise QuIOError("Unknown output stream.")
 
     def _send_file(self) -> int:
         total = 0
         size = 0
         quiet_sample_t_size = self._ffi.sizeof("quiet_sample_t")
         try:
+            if self._input_file == "-":
+                if self._script:
+                    if sys.stdin is not None and getattr(sys.stdin, "buffer", None) is not None:
+                        self._input_data = sys.stdin.buffer
+                    else:
+                        sys.stdin = io.TextIOWrapper(open(os.devnull, "wb", buffering=0), encoding='utf-8')
+                        self._input_data = sys.stdin.buffer
+                else:
+                    raise QuArgumentsError("No input file specified.")
             opt = self._lib.quiet_encoder_profile_filename(self._profile_file.encode(), self._protocol.encode())
             self._e = self._lib.quiet_encoder_create(opt, self._samplerate)
             done = False
@@ -131,11 +131,11 @@ class SendFile:
                         self._fi = open(self._input_file, "rb")
                         self._input_data = self._fi
                 else:
-                    raise IOError(f"ERROR: File {self._input_file} not found.")
+                    raise QuIOError(f"File {self._input_file} not found.")
             elif self._input_data is None:
-                raise IOError(f"ERROR: Input file is stdin but it does not exists!")
+                raise QuIOError(f"Input file is stdin but it does not exists!")
             elif self._file_transfer:
-                raise ValueError("ERROR: File transfer mode requires an input file.")
+                raise QuArgumentsError("File transfer mode requires an input file.")
 
             self._write_data(b'0' * quiet_sample_t_size * self._samplerate * self._initial_silence)
             t = time.time()
@@ -149,7 +149,7 @@ class SendFile:
                 for i in range(0, len(nread), frame_len):
                     frame_len = len(nread) - i if frame_len > (len(nread) - i) else frame_len
                     if self._lib.quiet_encoder_send(self._e, nread[i:i+frame_len], frame_len) < 0:
-                        raise ValueError()
+                        raise QuValueError("quiet_encoder_send() returned negative value.")
                 if self._file_transfer:
                     total += len(nread)
                     self._print_msg(f"Sent: {total}    \r", end="")
@@ -168,23 +168,51 @@ class SendFile:
                     self._print_msg(f"Speed: {(self._buf.size + self._buf.header_size) / tt} B/s")
                 else:
                     self._print_msg(f"Speed: {size / tt} B/s")
-        except KeyboardInterrupt:
-            return 1
-        except IOError as ex:
-            if self._script or self._queue:
-                self._print_msg(str(ex))
+        except KeyboardInterrupt as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(f"KeyboardInterrupt Error: {str(ex)}")
                 return 1
             else:
                 raise ex
         except ValueError as ex:
-            if self._script or self._queue:
+            if self._script or self._queue is not None:
+                self._print_msg(f"ValueError: {str(ex)}")
+                return 1
+            else:
+                raise ex
+        except IOError as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(f"IOError: {str(ex)}")
+                return 1
+            else:
+                raise ex
+        except zlib.error as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(f"zlib Error: {str(ex)}")
+                return 1
+            else:
+                raise ex
+        except QuArgumentsError as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(str(ex))
+                return 1
+            else:
+                raise ex
+        except QuIOError as ex:
+            if self._script or self._queue is not None:
+                self._print_msg(str(ex))
+                return 1
+            else:
+                raise ex
+        except QuValueError as ex:
+            if self._script or self._queue is not None:
                 self._print_msg(str(ex))
                 return 1
             else:
                 raise ex
         except Exception as ex:
-            if self._script or self._queue:
-                self._print_msg(str(ex))
+            if self._script or self._queue is not None:
+                self._print_msg(f"Excpetion Error: {str(ex)}")
                 return 1
             else:
                 raise ex
